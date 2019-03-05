@@ -25,6 +25,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Joiner;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableList;
+import com.google.common.primitives.UnsignedBytes;
 import com.palantir.atlasdb.encoding.PtBytes;
 
 public class ColumnRangeSelection implements Serializable {
@@ -40,6 +41,10 @@ public class ColumnRangeSelection implements Serializable {
                                 @JsonProperty("endCol") byte[] endCol) {
         this.startCol = MoreObjects.firstNonNull(startCol, PtBytes.EMPTY_BYTE_ARRAY);
         this.endCol = MoreObjects.firstNonNull(endCol, PtBytes.EMPTY_BYTE_ARRAY);
+        if (isInvalidRange()) {
+            throw new IllegalArgumentException(
+                    "Invalid column range selection: " + this);
+        }
     }
 
     public byte[] getStartCol() {
@@ -83,5 +88,12 @@ public class ColumnRangeSelection implements Serializable {
         String start = PtBytes.encodeBase64String(startCol);
         String end = PtBytes.encodeBase64String(endCol);
         return Joiner.on(',').join(ImmutableList.of(start, end));
+    }
+
+    private boolean isInvalidRange() {
+        if (startCol.length == 0 || endCol.length == 0) {
+            return false;
+        }
+        return UnsignedBytes.lexicographicalComparator().compare(startCol, endCol) > 0;
     }
 }
